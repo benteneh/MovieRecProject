@@ -1,17 +1,18 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 import requests
+import os
 
 app = Flask(__name__)
-
 
 # OMDb API details
 API_KEY = "6a9cfac6"
 BASE_URL = "http://www.omdbapi.com/"
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///movies.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.getcwd(), 'movies.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ECHO'] = True  # Log SQL statements for debugging
 db = SQLAlchemy(app)
 
 # Movie model
@@ -28,7 +29,26 @@ class Movie(db.Model):
 
 # Initialize the database
 with app.app_context():
+    # Force table recreation for debugging purposes
     db.create_all()
+    print(f"Database created at {os.path.join(os.getcwd(), 'movies.db')}")
+
+    # Insert a dummy movie record to ensure the database is initialized
+    if not Movie.query.first():  # Only insert if the table is empty
+        dummy_movie = Movie(
+            title="Dummy Movie",
+            year="2024",
+            genre="Test",
+            director="Test Director",
+            actors="Test Actor",
+            imdb_rating="10.0",
+            plot="This is a test movie.",
+            poster="N/A"
+        )
+        db.session.add(dummy_movie)
+        db.session.commit()
+        print("Inserted dummy record into the movie table.")
+
 
 @app.route('/')
 def home():
@@ -36,7 +56,6 @@ def home():
 
 @app.route('/movie', methods=['GET'])
 def get_movie_details():
-    # Get the 'title' parameter from the query string
     title = request.args.get('title')
     if not title:
         return jsonify({'error': 'Please provide a movie title'}), 400
@@ -55,17 +74,13 @@ def get_movie_details():
             'Poster': movie.poster
         })
 
-    # If not, fetch from OMDb API
-    params = {
-        'apikey': API_KEY,
-        't': title  # Movie title
-    }
+    # Fetch from OMDb API if not found in database
+    params = {'apikey': API_KEY, 't': title}
     response = requests.get(BASE_URL, params=params)
 
     if response.status_code == 200:
         data = response.json()
         if data.get('Response') == 'True':
-            # Save movie to database
             new_movie = Movie(
                 title=data.get('Title'),
                 year=data.get('Year'),
@@ -79,7 +94,6 @@ def get_movie_details():
             db.session.add(new_movie)
             db.session.commit()
 
-            # Return the response
             return jsonify({
                 'Title': data.get('Title'),
                 'Year': data.get('Year'),
@@ -97,18 +111,15 @@ def get_movie_details():
 
 @app.route('/movies-by-genre', methods=['GET'])
 def get_movies_by_genre():
-    # Get the 'genre' parameter from the query string
     genre = request.args.get('genre')
     if not genre:
         return jsonify({'error': 'Please provide a genre'}), 400
 
-    # Query the database for movies matching the genre
-    movies = Movie.query.filter(Movie.genre.like(f"%{genre}%")).all()
+    movies = Movie.query.filter(Movie.genre.ilike(f"%{genre}%")).all()  # Case-insensitive search
 
     if not movies:
         return jsonify({'error': f'No movies found for genre: {genre}'}), 404
 
-    # Format the results as a list of dictionaries
     movies_data = [
         {
             'Title': movie.title,
@@ -126,4 +137,7 @@ def get_movies_by_genre():
     return jsonify(movies_data)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    print("Starting Flask app...")
+    app.run(debug=True, host='0.0.0.0', port=5000)
+
+
