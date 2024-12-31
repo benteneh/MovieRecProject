@@ -12,7 +12,6 @@ BASE_URL = "http://www.omdbapi.com/"
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.getcwd(), 'movies.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ECHO'] = True  # Log SQL statements for debugging
 db = SQLAlchemy(app)
 
 # Movie model
@@ -29,26 +28,7 @@ class Movie(db.Model):
 
 # Initialize the database
 with app.app_context():
-    # Force table recreation for debugging purposes
     db.create_all()
-    print(f"Database created at {os.path.join(os.getcwd(), 'movies.db')}")
-
-    # Insert a dummy movie record to ensure the database is initialized
-    if not Movie.query.first():  # Only insert if the table is empty
-        dummy_movie = Movie(
-            title="Dummy Movie",
-            year="2024",
-            genre="Test",
-            director="Test Director",
-            actors="Test Actor",
-            imdb_rating="10.0",
-            plot="This is a test movie.",
-            poster="N/A"
-        )
-        db.session.add(dummy_movie)
-        db.session.commit()
-        print("Inserted dummy record into the movie table.")
-
 
 @app.route('/')
 def home():
@@ -112,12 +92,16 @@ def get_movie_details():
 @app.route('/movies-by-genre', methods=['GET'])
 def get_movies_by_genre():
     genre = request.args.get('genre')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+
     if not genre:
         return jsonify({'error': 'Please provide a genre'}), 400
 
-    movies = Movie.query.filter(Movie.genre.ilike(f"%{genre}%")).all()  # Case-insensitive search
-
-    if not movies:
+    movies_query = Movie.query.filter(Movie.genre.ilike(f"%{genre}%")).order_by(Movie.imdb_rating.desc())
+    movies_paginated = movies_query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    if not movies_paginated.items:
         return jsonify({'error': f'No movies found for genre: {genre}'}), 404
 
     movies_data = [
@@ -131,13 +115,15 @@ def get_movies_by_genre():
             'Plot': movie.plot,
             'Poster': movie.poster
         }
-        for movie in movies
+        for movie in movies_paginated.items
     ]
 
-    return jsonify(movies_data)
+    return jsonify({
+        'movies': movies_data,
+        'total': movies_paginated.total,
+        'pages': movies_paginated.pages,
+        'current_page': movies_paginated.page
+    })
 
 if __name__ == '__main__':
-    print("Starting Flask app...")
-    app.run(debug=True, host='0.0.0.0', port=5000)
-
-
+    app.run(debug=True)

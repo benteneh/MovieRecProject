@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommendation System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1 class="website-name">Your Movie Guide</h1>
+    </header>
+    <main>
+        <div class="search-container">
+            <input 
+                type="text" 
+                id="genre-search" 
+                placeholder="Enter a genre..." 
+                oninput="showSuggestions(this.value)"
+            />
+            <ul id="dropdown-suggestions" class="suggestions-list"></ul>
+        </div>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
