@@ -1,9 +1,13 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 import requests
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='frontend')
+
+@app.route('/')
+def serve_index():
+    return send_from_directory(app.static_folder, 'index.html')
 
 # OMDb API details
 API_KEY = "6a9cfac6"
