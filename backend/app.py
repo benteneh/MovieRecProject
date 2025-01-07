@@ -96,18 +96,15 @@ def get_movie_details():
 @app.route('/movies-by-genre', methods=['GET'])
 def get_movies_by_genre():
     genre = request.args.get('genre')
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
-
     if not genre:
-        return jsonify({'error': 'Please provide a genre'}), 400
-
-    movies_query = Movie.query.filter(Movie.genre.ilike(f"%{genre}%")).order_by(Movie.imdb_rating.desc())
-    movies_paginated = movies_query.paginate(page=page, per_page=per_page, error_out=False)
+        return jsonify({'error': 'No genre provided'}), 400
     
-    if not movies_paginated.items:
+    # Query database for movies matching the genre (case-insensitive)
+    movies = Movie.query.filter(Movie.genre.ilike(f"%{genre}%")).all()
+    if not movies:
         return jsonify({'error': f'No movies found for genre: {genre}'}), 404
 
+    # Format the movies as a list of dictionaries
     movies_data = [
         {
             'Title': movie.title,
@@ -119,15 +116,9 @@ def get_movies_by_genre():
             'Plot': movie.plot,
             'Poster': movie.poster
         }
-        for movie in movies_paginated.items
+        for movie in movies
     ]
 
-    return jsonify({
-        'movies': movies_data,
-        'total': movies_paginated.total,
-        'pages': movies_paginated.pages,
-        'current_page': movies_paginated.page
-    })
-
+    return jsonify({'movies': movies_data})
 if __name__ == '__main__':
     app.run(debug=True)
