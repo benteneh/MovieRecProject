@@ -1,9 +1,11 @@
 from flask import Flask, jsonify, request, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
 import requests
 import os
 
 app = Flask(__name__, static_folder='frontend')
+CORS(app)
 
 @app.route('/')
 def serve_index():
