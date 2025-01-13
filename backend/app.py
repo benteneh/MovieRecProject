@@ -11,16 +11,13 @@ CORS(app)
 def serve_index():
     return send_from_directory(app.static_folder, 'index.html')
 
-# OMDb API details
 API_KEY = "6a9cfac6"
 BASE_URL = "http://www.omdbapi.com/"
 
-# Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(os.getcwd(), 'movies.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# Movie model
 class Movie(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), unique=True, nullable=False)
@@ -32,7 +29,6 @@ class Movie(db.Model):
     plot = db.Column(db.Text)
     poster = db.Column(db.Text)
 
-# Initialize the database
 with app.app_context():
     db.create_all()
 
@@ -95,18 +91,18 @@ def get_movie_details():
     else:
         return jsonify({'error': 'Failed to fetch data from OMDb'}), 500
 
-@app.route('/movies-by-genre', methods=['GET'])
+@app.route('/movies', methods=['GET'])
 def get_movies_by_genre():
-    genre = request.args.get('genre')
-    if not genre:
-        return jsonify({'error': 'No genre provided'}), 400
-    
-    # Query database for movies matching the genre (case-insensitive)
-    movies = Movie.query.filter(Movie.genre.ilike(f"%{genre}%")).all()
-    if not movies:
-        return jsonify({'error': f'No movies found for genre: {genre}'}), 404
+    genre = request.args.get('genre', '') 
+    page = int(request.args.get('page', 1)) 
+    per_page = int(request.args.get('per_page', 10))
 
-    # Format the movies as a list of dictionaries
+    query = Movie.query
+    if genre:
+        query = query.filter(Movie.genre.ilike(f"%{genre}%"))
+
+    paginated_movies = query.paginate(page=page, per_page=per_page, error_out=False)
+
     movies_data = [
         {
             'Title': movie.title,
@@ -118,9 +114,16 @@ def get_movies_by_genre():
             'Plot': movie.plot,
             'Poster': movie.poster
         }
-        for movie in movies
+        for movie in paginated_movies.items
     ]
 
-    return jsonify({'movies': movies_data})
+    return jsonify({
+        'movies': movies_data,          
+        'total': paginated_movies.total,  
+        'page': paginated_movies.page,    
+        'pages': paginated_movies.pages   
+    })
+
 if __name__ == '__main__':
     app.run(debug=True)
+
