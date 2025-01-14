@@ -1,1 +1,3 @@
 # MovieRecProject
+
+This project is a simple Movie Recommendation System that I built as a way to improve my skills in full-stack development. I wanted to create something straightforward that integrates both a backend and frontend, helping me understand how APIs, databases, and user interfaces work together. The backend is built with Flask, and it connects to the OMDb API to fetch real movie data while storing it in an SQLite database. The frontend is created using React and styled with Tailwind CSS, featuring an easy-to-use interface with search, pagination, and filtering by genre. This project reflects my journey as a student learning how to build functional and interactive applications from scratch.
